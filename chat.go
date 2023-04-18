@@ -47,30 +47,17 @@ func chat(_ options, convo conversation) {
 }
 
 type message struct {
-	role    role
-	content string
+	Role    role   `json:"role"`
+	Content string `json:"content"`
 }
 
-type role uint8
+type role string
 
 const (
-	roleSystem role = iota
-	roleUser
-	roleGpt
+	roleSystem role = "system"
+	roleUser   role = "user"
+	roleGpt    role = "assistant"
 )
-
-func (x role) String() string {
-	switch x {
-	case roleSystem:
-		return "system"
-	case roleUser:
-		return "user"
-	case roleGpt:
-		return "assistant"
-	default:
-		panic(fmt.Sprintf("Unknown role: %d", x))
-	}
-}
 
 type conversation []message
 
@@ -222,7 +209,7 @@ func renderMessages(convo conversation, width int) string {
 	for _, msg := range convo {
 		headerStyle := lipgloss.NewStyle()
 		style := lipgloss.NewStyle()
-		switch msg.role {
+		switch msg.Role {
 		case roleSystem:
 			headerStyle = systemHeader
 			style = system
@@ -235,8 +222,8 @@ func renderMessages(convo conversation, width int) string {
 		}
 
 		out.WriteString(lipgloss.JoinVertical(lipgloss.Left,
-			headerStyle.Render(msg.role.String()),
-			style.Render(msg.content)))
+			headerStyle.Render(string(msg.Role)),
+			style.Render(msg.Content)))
 		out.WriteString("\n")
 
 	}
@@ -248,8 +235,8 @@ func fetchResponse(prompt string) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(2 * time.Second)
 		return response{
-			me:  message{role: roleUser, content: prompt},
-			gpt: message{role: roleGpt, content: "API response"},
+			me:  message{Role: roleUser, Content: prompt},
+			gpt: message{Role: roleGpt, Content: "API response"},
 		}
 	}
 }
