@@ -12,6 +12,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
+	"github.com/charmbracelet/glamour"
 )
 
 func chat(opts options, convo conversation) {
@@ -123,6 +124,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Width = m.width
 		m.viewport.Height = m.height - 3
 		m.prompt.SetWidth(m.width)
+
+		myCmd = updateViewport
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyCtrlD:
@@ -224,9 +227,27 @@ func renderMessages(convo conversation, width int) string {
 			style = gpt
 		}
 
+		var render string
+		if msg.Role == roleGpt {
+			if r, err := glamour.NewTermRenderer(
+				glamour.WithStandardStyle("dark"),
+				glamour.WithWordWrap(width-8),
+			); err != nil {
+				render = msg.Content
+			} else {
+				if mkd, err := r.Render(msg.Content); err != nil {
+					render = msg.Content
+				} else {
+					render = mkd
+				}
+			}
+		} else {
+			render = msg.Content
+		}
+
 		out.WriteString(lipgloss.JoinVertical(lipgloss.Left,
 			headerStyle.Render(string(msg.Role)),
-			style.Render(msg.Content)))
+			style.Render(render)))
 		out.WriteString("\n")
 
 	}
