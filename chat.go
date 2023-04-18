@@ -119,7 +119,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.height = max(msg.Height, 6)
-		m.width = min(msg.Width, 80)
+		m.width = min(msg.Width, 120)
 
 		m.viewport.Width = m.width
 		m.viewport.Height = m.height - 3
@@ -139,12 +139,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.prompt.Placeholder = currentPrompt
 				m.prompt.Reset()
 				m.prompt.Blur()
+				if currentPrompt[0] == ':' {
+					m.status = statusAwaitingCommand
+				}
 				switch m.status {
 				case statusAwaitingInput:
 					m.status = statusAwaitingResponse
 					myCmd = fetchResponse(currentPrompt, m)
 				case statusAwaitingCommand:
-					myCmd = executeCommand(currentPrompt)
+					myCmd = executeCommand(currentPrompt, m.convo)
 				}
 			} else {
 				myCmd = updateViewport
@@ -287,12 +290,21 @@ type executionResult struct {
 	stderr string
 }
 
-func executeCommand(cmd string) tea.Cmd {
+func executeCommand(prompt string, convo conversation) tea.Cmd {
 	return func() tea.Msg {
-		return executionResult{
-			cmd:    cmd,
-			stdout: "Yay",
+		res := executionResult{cmd: prompt}
+		cmd, err := parseCommand(prompt)
+		if err != nil {
+			res.stderr = err.Error()
+		} else {
+			if err := cmd.Exec(convo); err != nil {
+				res.stderr = err.Error()
+			} else {
+				res.stdout = "yay!"
+			}
 		}
+
+		return res
 	}
 }
 
