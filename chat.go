@@ -14,7 +14,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 )
 
-func chat(_ options, convo conversation) {
+func chat(opts options, convo conversation) {
 	width := 30
 
 	tx := textarea.New()
@@ -33,6 +33,7 @@ func chat(_ options, convo conversation) {
 	vp := viewport.New(width, 5)
 
 	m := model{
+		opts:     opts,
 		convo:    convo,
 		status:   statusAwaitingInput,
 		prompt:   tx,
@@ -70,6 +71,7 @@ const (
 )
 
 type model struct {
+	opts   options
 	convo  conversation
 	status systemStatus
 
@@ -130,15 +132,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.prompt.Prompt = ""
 		case tea.KeyEnter:
 			currentPrompt := m.prompt.Value()
-			m.prompt.Placeholder = currentPrompt
-			m.prompt.Reset()
-			m.prompt.Blur()
-			switch m.status {
-			case statusAwaitingInput:
-				m.status = statusAwaitingResponse
-				myCmd = fetchResponse(currentPrompt)
-			case statusAwaitingCommand:
-				myCmd = executeCommand(currentPrompt)
+			if currentPrompt != "" {
+				m.prompt.Placeholder = currentPrompt
+				m.prompt.Reset()
+				m.prompt.Blur()
+				switch m.status {
+				case statusAwaitingInput:
+					m.status = statusAwaitingResponse
+					myCmd = fetchResponse(currentPrompt, m)
+				case statusAwaitingCommand:
+					myCmd = executeCommand(currentPrompt)
+				}
+			} else {
+				myCmd = updateViewport
 			}
 		}
 	case refresh:
@@ -151,10 +157,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.SetContent(renderMessages(m.convo, m.width))
 		m.viewport.GotoBottom()
 	case response:
-		m.convo = append(
-			m.convo,
-			msg.me,
-			msg.gpt)
+		m.convo = msg.convo
 		m.status = statusAwaitingInput
 		m.prompt.Placeholder = ""
 		m.prompt.Focus()
@@ -231,19 +234,19 @@ func renderMessages(convo conversation, width int) string {
 	return out.String()
 }
 
-func fetchResponse(prompt string) tea.Cmd {
+func fetchResponse(prompt string, m model) tea.Cmd {
 	return func() tea.Msg {
-		time.Sleep(2 * time.Second)
-		return response{
-			me:  message{Role: roleUser, Content: prompt},
-			gpt: message{Role: roleGpt, Content: "API response"},
+		if c, err := m.convo.Ask(prompt, m.opts); err != nil {
+			c := append(c, message{Role: roleGpt, Content: err.Error()})
+			return response{convo: c}
+		} else {
+			return response{convo: c}
 		}
 	}
 }
 
 type response struct {
-	me  message
-	gpt message
+	convo conversation
 }
 
 func updateViewport() tea.Msg {
