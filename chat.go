@@ -47,21 +47,6 @@ func chat(opts options, convo conversation) {
 	}
 }
 
-type message struct {
-	Role    role   `json:"role"`
-	Content string `json:"content"`
-}
-
-type role string
-
-const (
-	roleSystem role = "system"
-	roleUser   role = "user"
-	roleGpt    role = "assistant"
-)
-
-type conversation []message
-
 type systemStatus uint8
 
 const (
