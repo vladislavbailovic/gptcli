@@ -15,13 +15,23 @@ func parseCommand(prompt string) (Command, error) {
 	if prompt[0] == ':' {
 		prompt = prompt[1:]
 	}
-	switch strings.TrimSpace(prompt) {
-	case "cc", "copy code":
+	parts := strings.SplitN(strings.TrimSpace(prompt), " ", 2)
+	switch parts[0] {
+	case "cc", "yc":
 		return CopyCodeCommand{}, nil
-	case "ca", "copy all":
+	case "ca", "ya":
 		return CopyAllCommand{}, nil
-	case "c", "copy":
-		return CopyCommand{}, nil
+	case "c", "yy", "copy":
+		if len(parts) == 1 {
+			return CopyCommand{}, nil
+		}
+		if parts[1] == "code" {
+			return CopyCodeCommand{}, nil
+		}
+		if parts[1] == "all" {
+			return CopyAllCommand{}, nil
+		}
+		return nil, errors.New("not sure what you wanna copy")
 	}
 	return nil, errors.New("unknown command")
 }

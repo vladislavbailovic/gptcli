@@ -7,6 +7,7 @@ func Test_parseCommand_CopyGeneric(t *testing.T) {
 	suite := []string{
 		"copy",
 		"c",
+		"yy",
 	}
 	for _, test := range suite {
 		t.Run(test, func(t *testing.T) {
@@ -35,6 +36,7 @@ func Test_parseCommand_CopyCode(t *testing.T) {
 	suite := []string{
 		"copy code",
 		"cc",
+		"yc",
 	}
 	for _, test := range suite {
 		t.Run(test, func(t *testing.T) {
@@ -64,6 +66,7 @@ func Test_parseCommand_CopyAll(t *testing.T) {
 	suite := []string{
 		"copy all",
 		"ca",
+		"ya",
 	}
 	for _, test := range suite {
 		t.Run(test, func(t *testing.T) {

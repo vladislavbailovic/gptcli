@@ -22,7 +22,6 @@ func chat(opts options, convo conversation) {
 
 	tx.FocusedStyle.CursorLine = lipgloss.NewStyle()
 	tx.ShowLineNumbers = false
-	tx.Prompt = "> "
 	tx.CharLimit = 140
 
 	tx.SetWidth(width)
@@ -36,11 +35,11 @@ func chat(opts options, convo conversation) {
 	m := model{
 		opts:     opts,
 		convo:    convo,
-		status:   statusAwaitingInput,
 		prompt:   tx,
 		viewport: vp,
 		width:    width,
 	}
+	m.setStatus(statusAwaitingInput)
 
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
@@ -72,9 +71,11 @@ const (
 )
 
 type model struct {
-	opts   options
-	convo  conversation
-	status systemStatus
+	opts  options
+	convo conversation
+
+	status     systemStatus
+	statusLine string
 
 	prompt   textarea.Model
 	viewport viewport.Model
@@ -82,28 +83,23 @@ type model struct {
 	width, height int
 }
 
+func (m *model) setStatus(s systemStatus) {
+	m.status = s
+	switch s {
+	case statusAwaitingInput:
+		m.statusLine = ":h for help, ctrl+enter to send"
+		m.prompt.Prompt = "> "
+	case statusAwaitingResponse:
+		m.statusLine = "... Asking GPT ..."
+		m.prompt.Prompt = "> "
+	case statusAwaitingCommand:
+		m.statusLine = "enter command, :h for help"
+		m.prompt.Prompt = ""
+	}
+}
+
 func (m model) Init() tea.Cmd {
 	return tea.Batch(textarea.Blink, updateViewportDelayed)
-}
-
-func max(from ...int) int {
-	x := 0
-	for _, y := range from {
-		if y > x {
-			x = y
-		}
-	}
-	return x
-}
-
-func min(from ...int) int {
-	x := math.MaxInt
-	for _, y := range from {
-		if y < x {
-			x = y
-		}
-	}
-	return x
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -131,8 +127,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC, tea.KeyCtrlD:
 			return m, tea.Quit
 		case tea.KeyEsc:
-			m.status = statusAwaitingCommand
-			m.prompt.Prompt = ""
+			if m.status == statusAwaitingCommand {
+				m.setStatus(statusAwaitingInput)
+			} else if m.status != statusAwaitingResponse {
+				m.setStatus(statusAwaitingCommand)
+			}
 		case tea.KeyEnter:
 			currentPrompt := m.prompt.Value()
 			if currentPrompt != "" {
@@ -140,11 +139,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.prompt.Reset()
 				m.prompt.Blur()
 				if currentPrompt[0] == ':' {
-					m.status = statusAwaitingCommand
+					m.setStatus(statusAwaitingCommand)
 				}
 				switch m.status {
 				case statusAwaitingInput:
-					m.status = statusAwaitingResponse
+					m.setStatus(statusAwaitingResponse)
 					myCmd = fetchResponse(currentPrompt, m)
 				case statusAwaitingCommand:
 					myCmd = executeCommand(currentPrompt, m.convo)
@@ -154,22 +153,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case refresh:
-		switch m.status {
-		case statusAwaitingInput:
-			m.prompt.Prompt = "> "
-		case statusAwaitingCommand:
-			m.prompt.Prompt = ""
-		}
 		m.viewport.SetContent(renderMessages(m.convo, m.width))
 		m.viewport.GotoBottom()
 	case response:
 		m.convo = msg.convo
-		m.status = statusAwaitingInput
+		m.setStatus(statusAwaitingInput)
 		m.prompt.Placeholder = ""
 		m.prompt.Focus()
 		myCmd = updateViewport
 	case executionResult:
-		m.status = statusAwaitingInput
+		m.setStatus(statusAwaitingInput)
 		m.prompt.Placeholder = ""
 		m.prompt.Focus()
 		m.viewport.SetContent(fmt.Sprintf(
@@ -183,14 +176,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	prompt := m.prompt.View()
-	if m.status == statusAwaitingResponse {
-		prompt = lipgloss.NewStyle().
-			Width(m.width).
-			Align(lipgloss.Center).
-			Faint(true).
-			Italic(true).
-			Render("... waiting for response...") + "\n" + prompt
-	}
+	prompt = lipgloss.NewStyle().
+		Width(m.width).
+		Align(lipgloss.Center).
+		Faint(true).
+		Italic(true).
+		Render(m.statusLine) + "\n" + prompt
 	return fmt.Sprintf(
 		"%s\n%s",
 		m.viewport.View(),
@@ -313,4 +304,24 @@ func clearAfter(secs int) tea.Cmd {
 		time.Sleep(time.Duration(secs) * time.Second)
 		return refresh{}
 	}
+}
+
+func max(from ...int) int {
+	x := 0
+	for _, y := range from {
+		if y > x {
+			x = y
+		}
+	}
+	return x
+}
+
+func min(from ...int) int {
+	x := math.MaxInt
+	for _, y := range from {
+		if y < x {
+			x = y
+		}
+	}
+	return x
 }
