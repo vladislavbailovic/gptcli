@@ -68,17 +68,21 @@ type model struct {
 	width, height int
 }
 
+func (m *model) setStatusMsg(msg string) {
+	m.statusLine = msg
+}
+
 func (m *model) setStatus(s systemStatus) {
 	m.status = s
 	switch s {
 	case statusAwaitingInput:
-		m.statusLine = ":h for help, ctrl+enter to send"
+		m.statusLine = "Enter to send, Ctrl+C to quit"
 		m.prompt.Prompt = "> "
 	case statusAwaitingResponse:
-		m.statusLine = "... Asking GPT ..."
+		m.statusLine = "... Awaiting response ..."
 		m.prompt.Prompt = "> "
 	case statusAwaitingCommand:
-		m.statusLine = "enter command, :h for help"
+		m.statusLine = "Enter command"
 		m.prompt.Prompt = ""
 	}
 }
@@ -147,13 +151,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.prompt.Focus()
 		myCmd = updateViewport
 	case executionResult:
-		m.setStatus(statusAwaitingInput)
+		if msg.stderr != "" {
+			m.setStatusMsg(msg.stderr)
+			myCmd = switchToAfter(statusAwaitingInput, 2)
+		} else {
+			myCmd = switchToAfter(statusAwaitingInput, 0)
+		}
+	case switchToStatus:
 		m.prompt.Placeholder = ""
 		m.prompt.Focus()
-		m.viewport.SetContent(fmt.Sprintf(
-			"$ %s\n\nexit code: %d\n\noutput: %s\n\nerror: %s\n\n",
-			msg.cmd, msg.status, msg.stdout, msg.stderr))
-		myCmd = clearAfter(2)
+		m.setStatus(msg.status)
 	}
 
 	return m, tea.Batch(txCmd, vpCmd, myCmd)
@@ -284,10 +291,14 @@ func executeCommand(prompt string, convo conversation) tea.Cmd {
 	}
 }
 
-func clearAfter(secs int) tea.Cmd {
+type switchToStatus struct {
+	status systemStatus
+}
+
+func switchToAfter(s systemStatus, secs int) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(time.Duration(secs) * time.Second)
-		return refresh{}
+		return switchToStatus{status: s}
 	}
 }
 
