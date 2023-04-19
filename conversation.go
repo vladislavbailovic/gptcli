@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 )
 
@@ -127,7 +128,7 @@ func extractCodeFrom(msg string) []string {
 func fromCache(q string) ([]byte, error) {
 	h := md5.New()
 	io.WriteString(h, q)
-	fname := fmt.Sprintf("tmp/%x", h.Sum(nil))
+	fname := path.Join(os.TempDir(), fmt.Sprintf("gptcli-%x", h.Sum(nil)))
 	if cnt, err := os.ReadFile(fname); err != nil {
 		return []byte{}, err
 	} else {
@@ -138,6 +139,6 @@ func fromCache(q string) ([]byte, error) {
 func toCache(q string, cnt []byte) error {
 	h := md5.New()
 	io.WriteString(h, q)
-	fname := fmt.Sprintf("tmp/%x", h.Sum(nil))
+	fname := path.Join(os.TempDir(), fmt.Sprintf("gptcli-%x", h.Sum(nil)))
 	return os.WriteFile(fname, cnt, 0666)
 }

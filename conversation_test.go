@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"reflect"
 	"testing"
 )
@@ -49,7 +50,7 @@ func TestExtractCodeFrom(t *testing.T) {
 
 func TestFromCache(t *testing.T) {
 	// Create a temporary file to use for testing
-	tmpfile, err := ioutil.TempFile("tmp", "test")
+	tmpfile, err := ioutil.TempFile("", "test")
 	if err != nil {
 		t.Fatalf("Error creating temporary file: %v", err)
 	}
@@ -67,7 +68,7 @@ func TestFromCache(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating MD5 hash: %v", err)
 	}
-	expectedFilename := fmt.Sprintf("tmp/%x", h.Sum(nil))
+	expectedFilename := path.Join(os.TempDir(), fmt.Sprintf("gptcli-%x", h.Sum(nil)))
 
 	// Move the temporary file to the expected filename
 	if err := os.Rename(tmpfile.Name(), expectedFilename); err != nil {
