@@ -22,7 +22,7 @@ func chat(opts options, convo conversation) {
 
 	tx.FocusedStyle.CursorLine = lipgloss.NewStyle()
 	tx.ShowLineNumbers = false
-	tx.CharLimit = 140
+	tx.CharLimit = 280
 
 	tx.SetWidth(width)
 	tx.SetHeight(1)
