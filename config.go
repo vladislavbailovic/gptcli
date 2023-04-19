@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	configSourcePath string = "incsub/gptcli"
+	configSourcePath string = "gptcli"
 	configSourceFile string = "config.json"
 )
 
