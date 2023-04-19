@@ -11,6 +11,17 @@ import (
 	"testing"
 )
 
+func Test_extractCodeFrom(t *testing.T) {
+	buf, _ := os.ReadFile("testdata/resp.json")
+	x, _ := parseGptResponse(buf)
+	code := extractCodeFrom(x.Choices[0].Message.Content)
+
+	if len(code) != 1 {
+		t.Log(code)
+		t.Errorf("expected exact amount of code segments")
+	}
+}
+
 func TestExtractCodeFrom(t *testing.T) {
 	// Test with no code blocks
 	msg := `This is a message without any code blocks.
