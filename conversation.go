@@ -54,7 +54,7 @@ func (x conversation) Ask(q string, opts options) (conversation, error) {
 	var content []byte
 	if fc, err := fromCache(q); err != nil {
 		mdl := gptMsg{
-			Model:    gpt3,
+			Model:    opts.model,
 			Messages: query}
 		body, err := json.Marshal(mdl)
 		if err != nil {
