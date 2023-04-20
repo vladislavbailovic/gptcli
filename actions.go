@@ -98,6 +98,14 @@ type SelectCodeAction struct{}
 func (x SelectCodeAction) Exec(m model) (model, error) {
 	m.setMode(modeSelectCode)
 	code := m.convo.ParseCode()
+	if len(code) == 0 {
+		for _, msg := range m.convo {
+			if msg.Role != roleGpt {
+				continue
+			}
+			code = append(code, msg.Content)
+		}
+	}
 	lst := make([]list.Item, 0, len(code))
 	for idx, c := range code {
 		lst = append(lst, codeItem{code: strings.TrimSpace(c), idx: idx + 1})
