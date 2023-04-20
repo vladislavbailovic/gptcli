@@ -37,7 +37,7 @@ func TestExtractCodeFrom(t *testing.T) {
 		"```\n" +
 		`fmt.Println("Hello, World!")` + "\n" +
 		"```\n"
-	expected = []string{"\nfmt.Println(\"Hello, World!\")"}
+	expected = []string{"fmt.Println(\"Hello, World!\")"}
 	actual = extractCodeFrom(msg)
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Expected %v but got %v", expected, actual)
@@ -52,7 +52,7 @@ func TestExtractCodeFrom(t *testing.T) {
 		"```\n" +
 		`fmt.Println("Goodbye, World!")` + "\n" +
 		"```\n"
-	expected = []string{"\nfmt.Println(\"Hello, World!\")", "\nfmt.Println(\"Goodbye, World!\")"}
+	expected = []string{"fmt.Println(\"Hello, World!\")", "fmt.Println(\"Goodbye, World!\")"}
 	actual = extractCodeFrom(msg)
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Expected %v but got %v", expected, actual)
