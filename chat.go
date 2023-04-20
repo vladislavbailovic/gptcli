@@ -52,7 +52,7 @@ type systemStatus uint8
 const (
 	statusAwaitingInput systemStatus = iota
 	statusAwaitingResponse
-	statusAwaitingCommand
+	statusAwaitingAction
 )
 
 type model struct {
@@ -81,7 +81,7 @@ func (m *model) setStatus(s systemStatus) {
 	case statusAwaitingResponse:
 		m.statusLine = "... Awaiting response ..."
 		m.prompt.Prompt = "> "
-	case statusAwaitingCommand:
+	case statusAwaitingAction:
 		m.statusLine = "Enter command"
 		m.prompt.Prompt = ""
 	}
@@ -116,10 +116,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC, tea.KeyCtrlD:
 			return m, tea.Quit
 		case tea.KeyEsc:
-			if m.status == statusAwaitingCommand {
+			if m.status == statusAwaitingAction {
 				m.setStatus(statusAwaitingInput)
 			} else if m.status != statusAwaitingResponse {
-				m.setStatus(statusAwaitingCommand)
+				m.setStatus(statusAwaitingAction)
 			}
 		case tea.KeyEnter:
 			currentPrompt := m.prompt.Value()
@@ -128,14 +128,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.prompt.Reset()
 				m.prompt.Blur()
 				if currentPrompt[0] == ':' {
-					m.setStatus(statusAwaitingCommand)
+					m.setStatus(statusAwaitingAction)
 				}
 				switch m.status {
 				case statusAwaitingInput:
 					m.setStatus(statusAwaitingResponse)
 					myCmd = fetchResponse(currentPrompt, m)
-				case statusAwaitingCommand:
-					myCmd = executeCommand(currentPrompt, m.convo)
+				case statusAwaitingAction:
+					myCmd = executeAction(currentPrompt, m.convo)
 				}
 			} else {
 				myCmd = updateViewport
@@ -273,10 +273,10 @@ type executionResult struct {
 	stderr string
 }
 
-func executeCommand(prompt string, convo conversation) tea.Cmd {
+func executeAction(prompt string, convo conversation) tea.Cmd {
 	return func() tea.Msg {
 		res := executionResult{cmd: prompt}
-		cmd, err := parseCommand(prompt)
+		cmd, err := parseAction(prompt)
 		if err != nil {
 			res.stderr = err.Error()
 		} else {

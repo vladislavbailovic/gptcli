@@ -2,8 +2,8 @@ package main
 
 import "testing"
 
-func Test_parseCommand_CopyGeneric(t *testing.T) {
-	want, _ := parseCommand("copy")
+func Test_parseAction_CopyGeneric(t *testing.T) {
+	want, _ := parseAction("copy")
 	suite := []string{
 		"copy",
 		"c",
@@ -11,7 +11,7 @@ func Test_parseCommand_CopyGeneric(t *testing.T) {
 	}
 	for _, test := range suite {
 		t.Run(test, func(t *testing.T) {
-			got, err := parseCommand(test)
+			got, err := parseAction(test)
 			if err != nil {
 				t.Error(err)
 			}
@@ -20,7 +20,7 @@ func Test_parseCommand_CopyGeneric(t *testing.T) {
 			}
 		})
 		t.Run(":"+test, func(t *testing.T) {
-			got, err := parseCommand(":" + test)
+			got, err := parseAction(":" + test)
 			if err != nil {
 				t.Error(err)
 			}
@@ -31,8 +31,8 @@ func Test_parseCommand_CopyGeneric(t *testing.T) {
 	}
 }
 
-func Test_parseCommand_CopyCode(t *testing.T) {
-	want, _ := parseCommand("copy code")
+func Test_parseAction_CopyCode(t *testing.T) {
+	want, _ := parseAction("copy code")
 	suite := []string{
 		"copy code",
 		"cc",
@@ -40,7 +40,7 @@ func Test_parseCommand_CopyCode(t *testing.T) {
 	}
 	for _, test := range suite {
 		t.Run(test, func(t *testing.T) {
-			got, err := parseCommand(test)
+			got, err := parseAction(test)
 			if err != nil {
 				t.Error(err)
 			}
@@ -49,7 +49,7 @@ func Test_parseCommand_CopyCode(t *testing.T) {
 			}
 		})
 		t.Run(":"+test, func(t *testing.T) {
-			got, err := parseCommand(":" + test)
+			got, err := parseAction(":" + test)
 			if err != nil {
 				t.Error(err)
 			}
@@ -60,9 +60,9 @@ func Test_parseCommand_CopyCode(t *testing.T) {
 	}
 }
 
-func Test_parseCommand_CopyAll(t *testing.T) {
-	doNotWant, _ := parseCommand("copy code")
-	want, _ := parseCommand("copy all")
+func Test_parseAction_CopyAll(t *testing.T) {
+	doNotWant, _ := parseAction("copy code")
+	want, _ := parseAction("copy all")
 	suite := []string{
 		"copy all",
 		"ca",
@@ -70,7 +70,7 @@ func Test_parseCommand_CopyAll(t *testing.T) {
 	}
 	for _, test := range suite {
 		t.Run(test, func(t *testing.T) {
-			got, err := parseCommand(test)
+			got, err := parseAction(test)
 			if err != nil {
 				t.Error(err)
 			}
@@ -82,7 +82,7 @@ func Test_parseCommand_CopyAll(t *testing.T) {
 			}
 		})
 		t.Run(":"+test, func(t *testing.T) {
-			got, err := parseCommand(":" + test)
+			got, err := parseAction(":" + test)
 			if err != nil {
 				t.Error(err)
 			}

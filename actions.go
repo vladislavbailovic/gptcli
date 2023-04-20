@@ -7,51 +7,51 @@ import (
 	"github.com/atotto/clipboard"
 )
 
-type Command interface {
+type Action interface {
 	Exec(conversation) error
 }
 
-func parseCommand(prompt string) (Command, error) {
+func parseAction(prompt string) (Action, error) {
 	if prompt[0] == ':' {
 		prompt = prompt[1:]
 	}
 	parts := strings.SplitN(strings.TrimSpace(prompt), " ", 2)
 	switch parts[0] {
 	case "cc", "yc":
-		return CopyCodeCommand{}, nil
+		return CopyCodeAction{}, nil
 	case "ca", "ya":
-		return CopyAllCommand{}, nil
+		return CopyAllAction{}, nil
 	case "c", "yy", "copy":
 		if len(parts) == 1 {
-			return CopyCommand{}, nil
+			return CopyAction{}, nil
 		}
 		if parts[1] == "code" {
-			return CopyCodeCommand{}, nil
+			return CopyCodeAction{}, nil
 		}
 		if parts[1] == "all" {
-			return CopyAllCommand{}, nil
+			return CopyAllAction{}, nil
 		}
 		return nil, errors.New("not sure what you wanna copy")
 	}
 	return nil, errors.New("unknown command")
 }
 
-type CopyCommand struct{}
+type CopyAction struct{}
 
-func (x CopyCommand) Exec(c conversation) error {
+func (x CopyAction) Exec(c conversation) error {
 	code := c.ParseCode()
 	if len(code) == 0 {
-		cmd := new(CopyAllCommand)
+		cmd := new(CopyAllAction)
 		return cmd.Exec(c)
 	} else {
-		cmd := new(CopyCodeCommand)
+		cmd := new(CopyCodeAction)
 		return cmd.Exec(c)
 	}
 }
 
-type CopyCodeCommand struct{}
+type CopyCodeAction struct{}
 
-func (x CopyCodeCommand) Exec(c conversation) error {
+func (x CopyCodeAction) Exec(c conversation) error {
 	code := c.ParseCode()
 	if len(code) == 0 {
 		return errors.New("no code to copy")
@@ -59,9 +59,9 @@ func (x CopyCodeCommand) Exec(c conversation) error {
 	return clipboard.WriteAll(strings.TrimSpace(strings.Join(code, "\n\n")))
 }
 
-type CopyAllCommand struct{}
+type CopyAllAction struct{}
 
-func (x CopyAllCommand) Exec(c conversation) error {
+func (x CopyAllAction) Exec(c conversation) error {
 	var content strings.Builder
 	for _, m := range c {
 		if m.Role == roleSystem {
