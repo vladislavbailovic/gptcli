@@ -174,8 +174,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		myCmd = updateViewport
 	case executionResult:
 		var cmd tea.Cmd
-		if msg.stderr != "" {
-			m.setStatusMsg(msg.stderr)
+		if msg.err != nil {
+			m.setStatusMsg(msg.err.Error())
 			cmd = switchToAfter(statusAwaitingInput, 2)
 		} else {
 			m = msg.model
@@ -317,9 +317,8 @@ func updateViewportDelayed() tea.Msg {
 type refresh struct{}
 
 type executionResult struct {
-	status int
-	stderr string
-	model  model
+	err   error
+	model model
 }
 
 func executeAction(prompt string, m model) tea.Cmd {
@@ -327,10 +326,10 @@ func executeAction(prompt string, m model) tea.Cmd {
 		res := executionResult{}
 		cmd, err := parseAction(prompt)
 		if err != nil {
-			res.stderr = err.Error()
+			res.err = err
 		} else {
 			if m, err := cmd.Exec(m); err != nil {
-				res.stderr = err.Error()
+				res.err = err
 			} else {
 				res.model = m
 			}
