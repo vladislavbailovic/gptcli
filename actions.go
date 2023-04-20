@@ -113,7 +113,7 @@ type codeItem struct {
 
 func (x codeItem) FilterValue() string { return x.code }
 func (x codeItem) Title() string       { return fmt.Sprintf("Code snippet %0d", x.idx) }
-func (x codeItem) Description() string { return x.code }
+func (x codeItem) Description() string { return strings.Replace(x.code, "\n", " ", -1) }
 
 type CopySelectedAction struct{}
 

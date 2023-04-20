@@ -134,11 +134,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlD:
 			return m, tea.Quit
 		case tea.KeyEsc:
-			if m.status == statusAwaitingAction {
-				m.setStatus(statusAwaitingInput)
-			} else if m.status != statusAwaitingResponse {
-				m.setStatus(statusAwaitingAction)
+			if m.mode == modeChat {
+				if m.status == statusAwaitingAction {
+					m.setStatus(statusAwaitingInput)
+				} else if m.status != statusAwaitingResponse {
+					m.setStatus(statusAwaitingAction)
+				}
+			} else {
+				m.setMode(modeChat)
 			}
+			lsCmd = nil
+		case tea.KeyCtrlQ:
+			lsCmd = nil
 		case tea.KeyCtrlS:
 			myCmd = executeAction(actionSwitchToSelection, m)
 		case tea.KeyCtrlC:
