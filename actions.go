@@ -9,6 +9,12 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 )
 
+const (
+	actionCopySelected      string = "copyselected"
+	actionCopyFromChat      string = "copy"
+	actionSwitchToSelection string = "selcode"
+)
+
 type Action interface {
 	Exec(model) (model, error)
 }
@@ -19,15 +25,15 @@ func parseAction(prompt string) (Action, error) {
 	}
 	parts := strings.SplitN(strings.TrimSpace(prompt), " ", 2)
 	switch parts[0] {
-	case "sc", "selcode":
+	case "sc", actionSwitchToSelection:
 		return SelectCodeAction{}, nil
-	case "copyselected":
+	case actionCopySelected:
 		return CopySelectedAction{}, nil
 	case "cc", "yc":
 		return CopyCodeAction{}, nil
 	case "ca", "ya":
 		return CopyAllAction{}, nil
-	case "c", "yy", "copy":
+	case "c", "yy", actionCopyFromChat:
 		if len(parts) == 1 {
 			return CopyAction{}, nil
 		}
@@ -62,7 +68,7 @@ func (x CopyCodeAction) Exec(m model) (model, error) {
 	if len(code) == 0 {
 		return m, errors.New("no code to copy")
 	}
-	return m, clipboard.WriteAll(strings.TrimSpace(strings.Join(code, "\n\n")))
+	return m, clipboard.WriteAll(strings.TrimSpace(strings.Join(code, "\n")))
 }
 
 type CopyAllAction struct{}
@@ -94,7 +100,7 @@ func (x SelectCodeAction) Exec(m model) (model, error) {
 	code := m.convo.ParseCode()
 	lst := make([]list.Item, 0, len(code))
 	for idx, c := range code {
-		lst = append(lst, codeItem{code: strings.TrimSpace(c), idx: idx})
+		lst = append(lst, codeItem{code: strings.TrimSpace(c), idx: idx + 1})
 	}
 	m.list.SetItems(lst)
 	return m, nil
@@ -106,7 +112,7 @@ type codeItem struct {
 }
 
 func (x codeItem) FilterValue() string { return x.code }
-func (x codeItem) Title() string       { return fmt.Sprintf("Item %0d", x.idx) }
+func (x codeItem) Title() string       { return fmt.Sprintf("Code snippet %0d", x.idx) }
 func (x codeItem) Description() string { return x.code }
 
 type CopySelectedAction struct{}

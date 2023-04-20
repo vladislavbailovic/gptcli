@@ -112,7 +112,7 @@ func extractCodeFrom(msg string) []string {
 	for _, l := range strings.Split(msg, "\n") {
 		if inCode {
 			if strings.HasPrefix(l, "```") {
-				code = append(code, tmp)
+				code = append(code, strings.TrimSpace(tmp))
 				tmp = ""
 				inCode = false
 			} else {

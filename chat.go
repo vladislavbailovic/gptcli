@@ -91,7 +91,7 @@ func (m *model) setStatus(s systemStatus) {
 	m.status = s
 	switch s {
 	case statusAwaitingInput:
-		m.statusLine = "Enter to send, Ctrl+C to quit"
+		m.statusLine = "Enter to send, Ctrl+D to quit"
 		m.prompt.Prompt = "> "
 	case statusAwaitingResponse:
 		m.statusLine = "... Awaiting response ..."
@@ -131,7 +131,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		myCmd = updateViewport
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyCtrlD:
+		case tea.KeyCtrlD:
 			return m, tea.Quit
 		case tea.KeyEsc:
 			if m.status == statusAwaitingAction {
@@ -139,6 +139,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.status != statusAwaitingResponse {
 				m.setStatus(statusAwaitingAction)
 			}
+		case tea.KeyCtrlS:
+			myCmd = executeAction(actionSwitchToSelection, m)
+		case tea.KeyCtrlC:
+			if m.mode == modeSelectCode {
+				myCmd = executeAction(actionCopySelected, m)
+			} else {
+				myCmd = executeAction(actionCopyFromChat, m)
+			}
+			txCmd = nil
+			vpCmd = nil
+			lsCmd = nil
 		case tea.KeyEnter:
 			if m.mode == modeSelectCode {
 				myCmd = executeAction("copyselected", m)
