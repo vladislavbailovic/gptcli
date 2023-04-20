@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/glamour"
@@ -32,11 +33,15 @@ func chat(opts options, convo conversation) {
 
 	vp := viewport.New(width, 5)
 
+	ls := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+
 	m := model{
+		mode:     modeChat,
 		opts:     opts,
 		convo:    convo,
 		prompt:   tx,
 		viewport: vp,
+		list:     ls,
 		width:    width,
 	}
 	m.setStatus(statusAwaitingInput)
@@ -55,7 +60,16 @@ const (
 	statusAwaitingAction
 )
 
+type renderMode uint8
+
+const (
+	modeChat renderMode = iota
+	modeSelectCode
+)
+
 type model struct {
+	mode renderMode
+
 	opts  options
 	convo conversation
 
@@ -64,6 +78,7 @@ type model struct {
 
 	prompt   textarea.Model
 	viewport viewport.Model
+	list     list.Model
 
 	width, height int
 }
@@ -95,11 +110,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		txCmd tea.Cmd
 		vpCmd tea.Cmd
+		lsCmd tea.Cmd
 		myCmd tea.Cmd
 	)
 
 	m.prompt, txCmd = m.prompt.Update(msg)
 	m.viewport, vpCmd = m.viewport.Update(msg)
+	m.list, lsCmd = m.list.Update(msg)
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -109,6 +126,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Width = m.width
 		m.viewport.Height = m.height - 3
 		m.prompt.SetWidth(m.width)
+		m.list.SetSize(m.width, m.height)
 
 		myCmd = updateViewport
 	case tea.KeyMsg:
@@ -122,23 +140,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.setStatus(statusAwaitingAction)
 			}
 		case tea.KeyEnter:
-			currentPrompt := m.prompt.Value()
-			if currentPrompt != "" {
-				m.prompt.Placeholder = currentPrompt
-				m.prompt.Reset()
-				m.prompt.Blur()
-				if currentPrompt[0] == ':' {
-					m.setStatus(statusAwaitingAction)
-				}
-				switch m.status {
-				case statusAwaitingInput:
-					m.setStatus(statusAwaitingResponse)
-					myCmd = fetchResponse(currentPrompt, m)
-				case statusAwaitingAction:
-					myCmd = executeAction(currentPrompt, m.convo)
-				}
+			if m.mode == modeSelectCode {
+				myCmd = executeAction("copyselected", m)
 			} else {
-				myCmd = updateViewport
+				currentPrompt := m.prompt.Value()
+				if currentPrompt != "" {
+					m.prompt.Placeholder = currentPrompt
+					m.prompt.Reset()
+					m.prompt.Blur()
+					if currentPrompt[0] == ':' {
+						m.setStatus(statusAwaitingAction)
+					}
+					switch m.status {
+					case statusAwaitingInput:
+						m.setStatus(statusAwaitingResponse)
+						myCmd = fetchResponse(currentPrompt, m)
+					case statusAwaitingAction:
+						myCmd = executeAction(currentPrompt, m)
+					}
+				} else {
+					myCmd = updateViewport
+				}
 			}
 		}
 	case refresh:
@@ -151,33 +173,61 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.prompt.Focus()
 		myCmd = updateViewport
 	case executionResult:
+		var cmd tea.Cmd
 		if msg.stderr != "" {
 			m.setStatusMsg(msg.stderr)
-			myCmd = switchToAfter(statusAwaitingInput, 2)
+			cmd = switchToAfter(statusAwaitingInput, 2)
 		} else {
-			myCmd = switchToAfter(statusAwaitingInput, 0)
+			m = msg.model
+			cmd = switchToAfter(statusAwaitingInput, 0)
 		}
+		myCmd = tea.Batch(cmd, updateViewport)
 	case switchToStatus:
 		m.prompt.Placeholder = ""
 		m.prompt.Focus()
 		m.setStatus(msg.status)
 	}
 
-	return m, tea.Batch(txCmd, vpCmd, myCmd)
+	return m, tea.Batch(txCmd, vpCmd, myCmd, lsCmd)
+}
+
+func (m *model) setMode(mode renderMode) {
+	m.mode = mode
 }
 
 func (m model) View() string {
+	switch m.mode {
+	case modeChat:
+		return m.viewChat()
+	case modeSelectCode:
+		return m.viewCodeSelection()
+	}
+	return ""
+}
+
+func (m model) viewPrompt() string {
 	prompt := m.prompt.View()
-	prompt = lipgloss.NewStyle().
+	return lipgloss.NewStyle().
 		Width(m.width).
 		Align(lipgloss.Center).
 		Faint(true).
 		Italic(true).
 		Render(m.statusLine) + "\n" + prompt
+}
+
+func (m model) viewCodeSelection() string {
+	return fmt.Sprintf(
+		"%s\n%s",
+		m.list.View(),
+		m.viewPrompt(),
+	) + "\n\n"
+}
+
+func (m model) viewChat() string {
 	return fmt.Sprintf(
 		"%s\n%s",
 		m.viewport.View(),
-		prompt,
+		m.viewPrompt(),
 	) + "\n\n"
 }
 
@@ -267,23 +317,22 @@ func updateViewportDelayed() tea.Msg {
 type refresh struct{}
 
 type executionResult struct {
-	cmd    string
 	status int
-	stdout string
 	stderr string
+	model  model
 }
 
-func executeAction(prompt string, convo conversation) tea.Cmd {
+func executeAction(prompt string, m model) tea.Cmd {
 	return func() tea.Msg {
-		res := executionResult{cmd: prompt}
+		res := executionResult{}
 		cmd, err := parseAction(prompt)
 		if err != nil {
 			res.stderr = err.Error()
 		} else {
-			if err := cmd.Exec(convo); err != nil {
+			if m, err := cmd.Exec(m); err != nil {
 				res.stderr = err.Error()
 			} else {
-				res.stdout = "yay!"
+				res.model = m
 			}
 		}
 

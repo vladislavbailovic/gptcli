@@ -2,13 +2,15 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/atotto/clipboard"
+	"github.com/charmbracelet/bubbles/list"
 )
 
 type Action interface {
-	Exec(conversation) error
+	Exec(model) (model, error)
 }
 
 func parseAction(prompt string) (Action, error) {
@@ -17,6 +19,10 @@ func parseAction(prompt string) (Action, error) {
 	}
 	parts := strings.SplitN(strings.TrimSpace(prompt), " ", 2)
 	switch parts[0] {
+	case "sc", "selcode":
+		return SelectCodeAction{}, nil
+	case "copyselected":
+		return CopySelectedAction{}, nil
 	case "cc", "yc":
 		return CopyCodeAction{}, nil
 	case "ca", "ya":
@@ -38,32 +44,32 @@ func parseAction(prompt string) (Action, error) {
 
 type CopyAction struct{}
 
-func (x CopyAction) Exec(c conversation) error {
-	code := c.ParseCode()
+func (x CopyAction) Exec(m model) (model, error) {
+	code := m.convo.ParseCode()
 	if len(code) == 0 {
 		cmd := new(CopyAllAction)
-		return cmd.Exec(c)
+		return cmd.Exec(m)
 	} else {
 		cmd := new(CopyCodeAction)
-		return cmd.Exec(c)
+		return cmd.Exec(m)
 	}
 }
 
 type CopyCodeAction struct{}
 
-func (x CopyCodeAction) Exec(c conversation) error {
-	code := c.ParseCode()
+func (x CopyCodeAction) Exec(m model) (model, error) {
+	code := m.convo.ParseCode()
 	if len(code) == 0 {
-		return errors.New("no code to copy")
+		return m, errors.New("no code to copy")
 	}
-	return clipboard.WriteAll(strings.TrimSpace(strings.Join(code, "\n\n")))
+	return m, clipboard.WriteAll(strings.TrimSpace(strings.Join(code, "\n\n")))
 }
 
 type CopyAllAction struct{}
 
-func (x CopyAllAction) Exec(c conversation) error {
+func (x CopyAllAction) Exec(m model) (model, error) {
 	var content strings.Builder
-	for _, m := range c {
+	for _, m := range m.convo {
 		if m.Role == roleSystem {
 			continue
 		}
@@ -78,5 +84,39 @@ func (x CopyAllAction) Exec(c conversation) error {
 		content.WriteString(m.Content)
 		content.WriteString("\n\n")
 	}
-	return clipboard.WriteAll(content.String())
+	return m, clipboard.WriteAll(content.String())
+}
+
+type SelectCodeAction struct{}
+
+func (x SelectCodeAction) Exec(m model) (model, error) {
+	m.setMode(modeSelectCode)
+	code := m.convo.ParseCode()
+	lst := make([]list.Item, 0, len(code))
+	for idx, c := range code {
+		lst = append(lst, codeItem{code: strings.TrimSpace(c), idx: idx})
+	}
+	m.list.SetItems(lst)
+	return m, nil
+}
+
+type codeItem struct {
+	idx  int
+	code string
+}
+
+func (x codeItem) FilterValue() string { return x.code }
+func (x codeItem) Title() string       { return fmt.Sprintf("Item %0d", x.idx) }
+func (x codeItem) Description() string { return x.code }
+
+type CopySelectedAction struct{}
+
+func (x CopySelectedAction) Exec(m model) (model, error) {
+	c, ok := m.list.SelectedItem().(codeItem)
+	if !ok {
+		return m, errors.New("no item selected")
+	}
+	m.list.SetItems([]list.Item{})
+	m.setMode(modeChat)
+	return m, clipboard.WriteAll(strings.TrimSpace(c.code))
 }
