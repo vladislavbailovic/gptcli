@@ -11,7 +11,7 @@ import (
 type options struct {
 	token       string
 	model       gptModel
-	mode        string
+	prompt      string
 	interactive bool
 }
 
@@ -25,12 +25,12 @@ func hasPipedInput() bool {
 func main() {
 	opts := options{
 		model:       gpt3,
-		mode:        "bash",
+		prompt:      "bash",
 		interactive: false,
 	}
 
-	flag.StringVar(&opts.mode, "mode", "", "Ask for help about topic (bash, php...)")
-	flag.StringVar(&opts.mode, "m", "", "Ask for help about topic (bash, php...)")
+	flag.StringVar(&opts.prompt, "prompt", "", "Ask for help about topic (bash, php...)")
+	flag.StringVar(&opts.prompt, "p", "", "Ask for help about topic (bash, php...)")
 
 	flag.BoolVar(&opts.interactive, "interactive", false, "Start in interactive mode right away")
 	flag.BoolVar(&opts.interactive, "i", false, "Start in interactive mode right away")
@@ -62,11 +62,11 @@ func main() {
 	}
 
 	var convo conversation
-	if opts.mode != "" {
+	if opts.prompt != "" {
 		convo = conversation{
 			message{
 				Role:    roleSystem,
-				Content: fmt.Sprintf("You are a helpful assistant that helps with %s.", opts.mode),
+				Content: fmt.Sprintf("You are a helpful assistant that helps with %s.", opts.prompt),
 			},
 		}
 	} else {
