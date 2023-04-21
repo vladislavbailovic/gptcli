@@ -22,6 +22,27 @@ func Test_extractCodeFrom(t *testing.T) {
 	}
 }
 
+func Test_ParseCode(t *testing.T) {
+	buf, _ := os.ReadFile("testdata/resp.json")
+	x, _ := parseGptResponse(buf)
+	c := conversation{
+		message{
+			Role:    roleSystem,
+			Content: "Priming message",
+		},
+		message{
+			Role:    roleGpt,
+			Content: x.Choices[0].Message.Content,
+		},
+	}
+	code := c.ParseCode()
+
+	if len(code) != 1 {
+		t.Log(code)
+		t.Errorf("expected exact amount of code segments")
+	}
+}
+
 func TestExtractCodeFrom(t *testing.T) {
 	// Test with no code blocks
 	msg := `This is a message without any code blocks.

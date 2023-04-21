@@ -47,6 +47,9 @@ func (x conversation) Last() string {
 }
 
 func (x conversation) Ask(q string, opts options) (conversation, error) {
+	if opts.token == "" {
+		return x, errors.New("missing token")
+	}
 	query := make(conversation, 0, len(x)+2)
 	query = append(query, x...)
 	query = append(query, message{Role: roleUser, Content: q})

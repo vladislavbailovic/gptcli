@@ -16,7 +16,7 @@ import (
 	"github.com/charmbracelet/glamour"
 )
 
-func chat(opts options, convo conversation) {
+func bootChat(opts options, convo conversation) model {
 	width := 30
 
 	tx := textarea.New()
@@ -45,7 +45,11 @@ func chat(opts options, convo conversation) {
 		width:    width,
 	}
 	m.setStatus(statusAwaitingInput)
+	return m
+}
 
+func chat(opts options, convo conversation) {
+	m := bootChat(opts, convo)
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
@@ -99,6 +103,8 @@ func (m *model) setStatus(s systemStatus) {
 	case statusAwaitingAction:
 		m.statusLine = "Enter command"
 		m.prompt.Prompt = ""
+	default:
+		m.statusLine = ""
 	}
 }
 
@@ -159,7 +165,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			lsCmd = nil
 		case tea.KeyEnter:
 			if m.mode == modeSelectCode {
-				myCmd = executeAction("copyselected", m)
+				myCmd = executeAction(actionCopySelected, m)
 			} else {
 				currentPrompt := m.prompt.Value()
 				if currentPrompt != "" {
