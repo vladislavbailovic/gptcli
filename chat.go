@@ -136,6 +136,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		myCmd = updateViewport
 	case tea.KeyMsg:
+		if "q" == msg.String() {
+			return m, nil
+		}
 		switch msg.Type {
 		case tea.KeyCtrlD:
 			return m, tea.Quit
